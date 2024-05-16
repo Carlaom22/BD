@@ -1,0 +1,148 @@
+
+
+POST http://localhost:8080/dbproj/register/doctor
+{
+  "username": "johndoe",
+  "email": "johndoe@example.com",
+  "password": "securepassword123",
+  "name": "John Doe",
+  "date_of_birth": "1980-01-01",
+  "address": "123 Medicine Street",
+  "phone_number": 1234567890,
+  "contract_details": "Full-time, starting 2024-05-01",
+  "medical_license": "MD123456",
+  "specialization_name": "Cardiology",
+  "specialization_id": 1
+}
+
+{
+    "patient": {
+        "username": "patient123",
+        "email": "patient@example.com",
+        "password": "password",
+        "name": "michael Doe",
+        "date_of_birth": "1980-01-01",
+        "address": "123 Patient Street",
+        "phone_number": 1234567890,
+        "medical_history": "None"
+    },
+    "nurse": {
+        "username": "nurse456",
+        "email": "nurse@example.com",
+        "password": "password",
+        "name": "Jane Smith",
+        "date_of_birth": "1990-05-15",
+        "address": "456 Nurse Avenue",
+        "phone_number": 9876543210,
+        "contract_details": "Full-time",
+	"hierarchical_category": "Senior Nurse"
+    },
+    "assistant": {
+        "username": "assistant789",
+        "email": "assistant@example.com",
+        "password": "password",
+        "name": "Emily Johnson",
+        "date_of_birth": "1985-10-20",
+        "address": "789 Assistant Road",
+        "phone_number": 5556667777,
+        "contract_details": "Part-time"
+    }
+}
+
+
+
+PUT http://localhost:8080/dbproj/user
+
+{
+  "username": "johndoe",
+  "password": "securepassword123"
+}
+
+{
+  "username": "patient123",
+  "password": "password"
+}
+
+{
+  "username": "assistant789",
+  "password": "password"
+}
+
+/dbproj/protected', methods=['GET'])
+
+
+
+
+POST http://localhost:8080/dbproj/appointment
+
+{"doctor_id":"2",
+ "date": "2024-11-30"}
+
+{"doctor_id":"2",
+ "date": "2024-11-30",
+"purpose":"heart check"}
+
+GET http://localhost:8080/dbproj/appointments/{patient_user_id}
+GET http://localhost:8080/dbproj/appointments/1
+
+POST http://localhost:8080/dbproj/surgery
+POST http://localhost:8080/dbproj/surgery/{hospitalization_id}
+{
+  "patient_id": 1,
+  "doctor": 2,
+  "nurses": [
+    [3, "Senior Nurse"],
+    
+  ],
+  "date": "2024-04-30"
+}
+
+
+GET http://localhost:8080/dbproj/prescriptions/1
+
+
+
+grant permission
+DO
+$$
+DECLARE
+    table_name text;
+BEGIN
+    FOR table_name IN SELECT tablename FROM pg_tables WHERE schemaname = 'public'
+    LOOP
+        EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO aulaspl;', table_name);
+    END LOOP;
+END
+$$;
+
+grant permission on sequences
+DO
+$$
+DECLARE
+    seq_record RECORD;
+BEGIN
+    FOR seq_record IN SELECT sequencename FROM pg_sequences WHERE schemaname = 'public'
+    LOOP
+        EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE public.%I TO aulaspl;', seq_record.sequencename);
+    END LOOP;
+END
+$$;
+
+
+
+delete all tables
+DO
+$do$
+DECLARE
+    _tbl text;
+BEGIN
+    FOR _tbl IN
+        SELECT tablename FROM pg_tables WHERE schemaname = 'public'
+    LOOP
+        EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(_tbl) || ' CASCADE;';
+    END LOOP;
+END
+$do$;
+
+cd C:\Users\Miguel\Desktop\4ano_2sem\BD3
+python demo-api.py

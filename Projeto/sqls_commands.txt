@@ -1,0 +1,29 @@
+
+
+
+
+
+-- Step 1: Create the function
+CREATE OR REPLACE FUNCTION create_bill_for_appointment()
+RETURNS TRIGGER AS $$
+DECLARE
+    new_bill_id BIGINT;
+BEGIN
+    -- Insert a new record into the bill table and get the generated bill_id
+    -- The amount is set to 100 and status to false for every new bill
+    INSERT INTO bill_ (total_amount, status_)
+    VALUES (100, false)
+    RETURNING bill_id INTO new_bill_id;
+
+    -- Set the bill__bill_id in the appointment record with the new bill_id
+    NEW.bill__bill_id := new_bill_id;
+
+    -- Return the modified NEW record to be used in the INSERT operation in the appointment table
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Step 2: Create the trigger
+CREATE TRIGGER trigger_create_bill_before_appointment_insert
+BEFORE INSERT ON appointment
+FOR EACH ROW EXECUTE FUNCTION create_bill_for_appointment();
