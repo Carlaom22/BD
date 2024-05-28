@@ -15,11 +15,9 @@ app.logger.setLevel(logging.DEBUG)  # Ensure the Flask app's logger is also set 
 
 StatusCodes = {"success": 200, "api_error": 400, "internal_error": 500}
 
-##########################################################
-## DATABASE ACCESS
-##########################################################
 
 
+# Establishes a database connection
 def db_connection():
     db = psycopg2.connect(
         user="aulaspl",
@@ -32,17 +30,14 @@ def db_connection():
     return db
 
 
-##########################################################
-## ENDPOINTS
-##########################################################
-
-
+# Check if the server is running
 @app.route("/")
 def hello():
     app.logger.debug("This is a debug message")
     return "Hello World!"
 
 
+# Registers a new user with a specified role 
 @app.route("/dbproj/register/<user_type>", methods=["POST"])
 def register_user(user_type):
     # Check if the request has a JSON body
@@ -57,14 +52,14 @@ def register_user(user_type):
     # Common attributes
     username = data.get("username")
     email = data.get("email")
-    password = data.get("password")  # Remember to hash passwords before storing them!
+    password = data.get("password")  
 
     # Additional attributes for user profiles
     name = data.get("name")
     date_of_birth = data.get("date_of_birth")
     address = data.get("address")
     phone_number = data.get("phone_number")
-    contract_details = data.get("contract_details", None)  # Potentially optional
+    contract_details = data.get("contract_details", None)  
 
     # Doctor-specific attributes
     medical_license = data.get("medical_license", None)
@@ -91,7 +86,7 @@ def register_user(user_type):
                     400,
                 )
 
-            # Insert doctor with all the required details
+            # Insert doctor with all the details
             user_id = insert_doctor(
                 cursor,
                 username,
@@ -189,9 +184,6 @@ def insert_user(
         ),
     )
     employee_id = cursor.fetchone()[0]
-
-    # Logic for different user types can be added here
-    # if user_type == 'nurse': # Similar to the doctor, but with nurse-specific details
 
     return employee_id
 
@@ -353,6 +345,7 @@ def insert_patient(
 app.config["SECRET_KEY"] = "your_secret_key"
 
 
+# Decorator to require JWT token for protected routes
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -372,12 +365,11 @@ def token_required(f):
     return decorated
 
 
+# Check if the user exists and the password is correct in the employee and patient tables.
 def check_user(username, password):
-    """Check if the user exists and the password is correct in the employee and patient tables."""
     conn = db_connection()
     cursor = conn.cursor()
     try:
-        # SQL statement to execute
         # Check the employee table
         cursor.execute(
             "SELECT password FROM employee WHERE username = %s;", (username,)
@@ -391,9 +383,9 @@ def check_user(username, password):
             )
             patient_password = cursor.fetchone()
             if patient_password is None:
-                return False  # Username not found in both tables
+                return False  
 
-            # Assume passwords are stored in plain text (not secure, use hashed passwords instead)
+            # Assume passwords are stored in plain text 
             return password == patient_password[0]
 
         # Check the retrieved password
@@ -407,6 +399,7 @@ def check_user(username, password):
         conn.close()
 
 
+# Authenticates a user and returns a JWT token
 @app.route("/dbproj/user", methods=["PUT"])
 def login():
     auth = request.json
@@ -467,7 +460,7 @@ def schedule_appointment():
 
     doctor_id = request.json["doctor_id"]
     date = request.json["date"]
-    purpose = request.json.get("purpose", None)  # 'purpose' is optional
+    purpose = request.json.get("purpose", None) 
 
     token = (
         request.headers.get("Authorization", "").split(" ")[1]
@@ -517,7 +510,7 @@ def schedule_appointment():
             VALUES (%s, %s, %s, %s) RETURNING appointment_id;
         """,
             (doctor_id, patient_id, date, purpose),
-        )  # Include purpose in the insert statement
+        )  
         appointment_id = cur.fetchone()[0]
         conn.commit()
         return jsonify({"status": 200, "results": appointment_id}), 200
@@ -538,9 +531,8 @@ def get_user_role_and_id_from_token(token):
         user_info = jwt.decode(
             token, current_app.config["SECRET_KEY"], algorithms=["HS256"]
         )
-        username = user_info.get("user", None)  # Retrieve the username from the token
+        username = user_info.get("user", None)  
 
-        # Query the database to check if the username belongs to a patient
         conn = db_connection()
         cursor = conn.cursor()
 
@@ -550,20 +542,18 @@ def get_user_role_and_id_from_token(token):
         )
         patient_id = cursor.fetchone()
 
-        if patient_id:  # If the username belongs to a patient
+        if patient_id:  
             cursor.close()
             conn.close()
             return "patient", patient_id[0]  # Return role as 'patient' and patient_id
 
         else:  # If the username does not belong to a patient, check if it belongs to an employee
-            # Check if the username belongs to an employee
             cursor.execute(
                 "SELECT employee_id FROM employee WHERE username = %s;", (username,)
             )
             employee_id = cursor.fetchone()
 
-            if employee_id:  # If the username belongs to an employee
-                # Further query to determine the employee's role
+            if employee_id:  
                 # Check if the employee is a doctor
                 cursor.execute(
                     "SELECT employee_employee_id FROM doctor_specialization WHERE employee_employee_id = %s;",
@@ -571,7 +561,7 @@ def get_user_role_and_id_from_token(token):
                 )
                 doctor_id = cursor.fetchone()
 
-                if doctor_id:  # If the employee is a doctor
+                if doctor_id:
                     cursor.close()
                     conn.close()
                     return (
@@ -586,7 +576,7 @@ def get_user_role_and_id_from_token(token):
                 )
                 nurse_id = cursor.fetchone()
 
-                if nurse_id:  # If the employee is a nurse
+                if nurse_id:  
                     cursor.close()
                     conn.close()
                     return "nurse", nurse_id[0]  # Return role as 'nurse' and nurse_id
@@ -598,7 +588,7 @@ def get_user_role_and_id_from_token(token):
                 )
                 assistant_id = cursor.fetchone()
 
-                if assistant_id:  # If the employee is an assistant
+                if assistant_id: 
                     cursor.close()
                     conn.close()
                     return (
@@ -628,7 +618,7 @@ def get_user_role_and_id_from_token(token):
 
 
 @app.route("/dbproj/appointments/<int:patient_user_id>", methods=["GET"])
-@token_required  # This decorator must check the token validity before proceeding
+@token_required 
 def see_appointments(patient_user_id):
     token = request.headers.get("Authorization", "").split(" ")[1]
     user_role, user_id = get_user_role_and_id_from_token(token)
@@ -647,7 +637,7 @@ def see_appointments(patient_user_id):
             403,
         )
 
-    # Query the database for appointments if the user is authorized
+    # Check if the user is authorized
     conn = db_connection()
     cursor = conn.cursor()
 
@@ -664,7 +654,7 @@ def see_appointments(patient_user_id):
         )
         appointments = cursor.fetchall()
 
-        # Format the results
+        # Format the response
         results = [
             {
                 "id": appt[0],
@@ -716,7 +706,7 @@ def schedule_surgery(hospitalization_id=None):
         bill_id = cursor.fetchone()[0]
 
         if not hospitalization_id:
-            # Assuming the first nurse in the list is the primary nurse for this hospitalization
+            # Assuming the first nurse in the list is the primary nurse
             primary_nurse_id = nurses[0][0] if nurses else None
             if not primary_nurse_id:
                 return (
@@ -745,7 +735,7 @@ def schedule_surgery(hospitalization_id=None):
                 (nurse[0], surgery_id),
             )
 
-        conn.commit()  # Commit transaction if everything is successful
+        conn.commit()  # Commit transaction if everything checks
 
         response = {
             "status": 200,
@@ -755,14 +745,14 @@ def schedule_surgery(hospitalization_id=None):
                 "patient_id": patient_id,
                 "doctor_specialization_employee_employee_id": doctor_specialization_id,
                 "date_surgery": date_surgery,
-                "bill_id": bill_id,  # Include the bill_id in the response
+                "bill_id": bill_id,  
             },
         }
     except Exception as e:
         conn.rollback()  # Rollback the transaction on any error
         response = {"status": 500, "errors": str(e)}
     finally:
-        conn.autocommit = True  # Reset autocommit setting
+        conn.autocommit = True 
         cursor.close()
         conn.close()
 
@@ -786,7 +776,6 @@ def get_prescriptions(person_id):
 
     try:
         cursor = conn.cursor()
-        # Fetch prescriptions linked to both appointments and hospitalizations
         cursor.execute(
             """
             SELECT DISTINCT p.prescription_id_, p.validity, po.dosage, po.frequency, m.name as medicine
@@ -939,11 +928,9 @@ def add_prescription():
             conn.rollback()
             return jsonify({"status": 400, "errors": "Invalid event type"}), 400
 
-        # Commit transaction
         conn.commit()
         return jsonify({"status": 200, "results": prescription_id}), 200
     except Exception as e:
-        # Rollback on error
         conn.rollback()
         return jsonify({"status": 500, "errors": str(e)}), 500
     finally:
@@ -968,7 +955,6 @@ def execute_payment(bill_id):
             403,
         )
 
-    # Ensure JSON data is provided
     data = request.json
     if not data or "amount" not in data or "payment_method" not in data:
         return jsonify({"status": 400, "errors": "Missing required fields"}), 400
@@ -979,10 +965,8 @@ def execute_payment(bill_id):
     conn = db_connection()
     cursor = conn.cursor()
     try:
-        # Begin transaction
         conn.autocommit = False
 
-        # Fetch the patient's bill and total amount from either hospitalization or appointment tables
         cursor.execute(
             """
             SELECT b.total_amount, b.status_
@@ -1058,7 +1042,6 @@ def execute_payment(bill_id):
         }
         return jsonify({"status": 200, "results": result}), 200
     except Exception as e:
-        # Rollback on error
         conn.rollback()
         return jsonify({"status": 500, "errors": str(e)}), 500
     finally:
@@ -1246,12 +1229,10 @@ def generate_monthly_report():
     if user_role != "assistant":
         return jsonify({"status": 403, "errors": "Unauthorized access"}), 403
 
-    # Connect to the database
     conn = db_connection()
     cursor = conn.cursor()
 
     try:
-        # SQL query to retrieve the monthly report
         cursor.execute(
             """
             SELECT
@@ -1280,22 +1261,18 @@ def generate_monthly_report():
 
         rows = cursor.fetchall()
 
-        # Dictionary to store the doctor with the most surgeries for each month
+        # Store the doctor with the most surgeries for each month in a dictionary
         report_dict = {}
 
-        # Iterate over query results to populate report_dict
+        # Calculate
         for row in rows:
             month = row[0]
             doctor = row[1]
             surgeries = row[2]
 
-            # Check if the month already exists in report_dict
             if month not in report_dict:
-                # If not, add the doctor as the doctor with the most surgeries for that month
                 report_dict[month] = {"doctor": doctor, "surgeries": surgeries}
             else:
-                # If yes, compare the surgeries with the current maximum surgeries for that month
-                # If the current doctor has more surgeries, update the entry in report_dict
                 if surgeries > report_dict[month]["surgeries"]:
                     report_dict[month] = {"doctor": doctor, "surgeries": surgeries}
 
